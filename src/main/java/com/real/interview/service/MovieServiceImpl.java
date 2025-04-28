@@ -1,5 +1,7 @@
 package com.real.interview.service;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.real.interview.dto.MovieRequest;
@@ -8,16 +10,19 @@ import com.real.interview.model.Movie;
 import com.real.interview.repository.MovieRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Transactional
 @Service
 @RequiredArgsConstructor
 public class MovieServiceImpl implements MovieService {
 
     private final MovieRepository movieRepository;
 
+    @CacheEvict(value = "movies", allEntries = true)
     @Override
     public MovieResponse createMovie(MovieRequest movieRequest) {
         Movie movie = new Movie();
@@ -28,10 +33,10 @@ public class MovieServiceImpl implements MovieService {
         return mapToMovieResponse(savedMovie);
     }
 
+    @Cacheable("movies")
     @Override
     public MovieResponse getMovieById(Long id) {
-        Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Movie not found with id: " + id));
+        Movie movie = checkIfMovieExist(id);
         return mapToMovieResponse(movie);
     }
 
@@ -44,8 +49,7 @@ public class MovieServiceImpl implements MovieService {
 
     @Override
     public MovieResponse updateMovie(Long id, MovieRequest movieRequest) {
-        Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Movie not found with id: " + id));
+        Movie movie = checkIfMovieExist(id);
         
         movie.setTitle(movieRequest.getTitle());
         movie.setReleaseYear(movieRequest.getReleaseYear());
@@ -54,11 +58,14 @@ public class MovieServiceImpl implements MovieService {
         return mapToMovieResponse(updatedMovie);
     }
 
+    private Movie checkIfMovieExist(Long id) {
+        return movieRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Movie not found with id: " + id));
+    }
+
     @Override
     public void deleteMovie(Long id) {
-        if (!movieRepository.existsById(id)) {
-            throw new RuntimeException("Movie not found with id: " + id);
-        }
+        checkIfMovieExist(id);
         movieRepository.deleteById(id);
     }
 
@@ -66,9 +73,9 @@ public class MovieServiceImpl implements MovieService {
     public List<MovieResponse> searchMovies(String title, Integer releaseYear) {
         List<Movie> movies;
         
-        if (title != null && releaseYear != null) {
+        if (title != null && !title.isEmpty() && releaseYear != null) {
             movies = movieRepository.findByTitleContainingIgnoreCaseAndReleaseYear(title, releaseYear);
-        } else if (title != null) {
+        } else if (title != null && !title.isEmpty()) {
             movies = movieRepository.findByTitleContainingIgnoreCase(title);
         } else if (releaseYear != null) {
             movies = movieRepository.findByReleaseYear(releaseYear);
