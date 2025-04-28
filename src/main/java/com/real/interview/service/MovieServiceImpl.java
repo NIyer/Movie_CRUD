@@ -36,8 +36,7 @@ public class MovieServiceImpl implements MovieService {
     @Cacheable("movies")
     @Override
     public MovieResponse getMovieById(Long id) {
-        Movie movie = checkIfMovieExist(id);
-        return mapToMovieResponse(movie);
+        return mapToMovieResponse(checkIfMovieExist(id));
     }
 
     @Override
