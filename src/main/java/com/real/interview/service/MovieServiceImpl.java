@@ -33,7 +33,7 @@ public class MovieServiceImpl implements MovieService {
         return mapToMovieResponse(savedMovie);
     }
 
-    @Cacheable("movies")
+    @Cacheable(value = "movies")
     @Override
     public MovieResponse getMovieById(Long id) {
         return mapToMovieResponse(checkIfMovieExist(id));
